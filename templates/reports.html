@@ -89,6 +89,12 @@
         .btn.secondary:hover {
             background: #5a6268;
         }
+        .btn.webhook {
+            background: #17a2b8;
+        }
+        .btn.webhook:hover {
+            background: #138496;
+        }
         .filters {
             display: flex;
             gap: 15px;
@@ -218,6 +224,60 @@
         .pagination button.active {
             background: #28a745;
         }
+        .webhook-status {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .webhook-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+        .webhook-indicator.inactive {
+            background: #dc3545;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+        .modal-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: white;
+        }
         @media (max-width: 768px) {
             .stats-grid {
                 grid-template-columns: 1fr;
@@ -239,6 +299,17 @@
         <div class="header">
             <h1>📊 Call Reports Dashboard</h1>
             <p>View and analyze call data from OmniDimension webhooks</p>
+        </div>
+
+        <!-- Webhook Status -->
+        <div class="webhook-status">
+            <div class="webhook-indicator" id="webhookIndicator"></div>
+            <div>
+                <strong>Webhook Status:</strong> 
+                <span id="webhookStatus">Checking...</span>
+                <br>
+                <small>URL: https://complaints-2-kappa.vercel.app/api/webhook</small>
+            </div>
         </div>
 
         <!-- Statistics Cards -->
@@ -266,6 +337,7 @@
             <div class="section-header">
                 <h2>📞 Call History</h2>
                 <div>
+                    <button class="btn webhook" onclick="checkWebhookStatus()">🔗 Check Webhook</button>
                     <button class="btn" onclick="refreshCalls()">🔄 Refresh</button>
                     <button class="btn secondary" onclick="exportData()">📥 Export</button>
                 </div>
@@ -316,16 +388,56 @@
         </div>
     </div>
 
+    <!-- Modal for call details -->
+    <div id="callModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>📞 Call Details</h2>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
     <script>
         let allCalls = [];
         let filteredCalls = [];
         let currentPage = 1;
         const callsPerPage = 10;
+        const webhookUrl = 'https://complaints-2-kappa.vercel.app/api/webhook';
 
         // Load calls on page load
         document.addEventListener('DOMContentLoaded', function() {
+            checkWebhookStatus();
             loadCalls();
         });
+
+        function checkWebhookStatus() {
+            fetch(webhookUrl, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const indicator = document.getElementById('webhookIndicator');
+                const status = document.getElementById('webhookStatus');
+                
+                if (data.status === 'healthy') {
+                    indicator.classList.remove('inactive');
+                    status.textContent = 'Active and ready to receive calls';
+                } else {
+                    indicator.classList.add('inactive');
+                    status.textContent = 'Inactive or error';
+                }
+            })
+            .catch(error => {
+                console.error('Error checking webhook status:', error);
+                const indicator = document.getElementById('webhookIndicator');
+                const status = document.getElementById('webhookStatus');
+                indicator.classList.add('inactive');
+                status.textContent = 'Error connecting to webhook';
+            });
+        }
 
         function loadCalls() {
             fetch('/api/calls')
@@ -456,15 +568,41 @@
                 return;
             }
 
-            const detailsHTML = `
+            const modalContent = `
                 <div class="call-details">
-                    <strong>Call Details:</strong>
-                    ${JSON.stringify(call, null, 2)}
+                    <h3>Call Information</h3>
+                    <p><strong>ID:</strong> ${call.id}</p>
+                    <p><strong>Timestamp:</strong> ${formatDateTime(call.timestamp)}</p>
+                    <p><strong>Duration:</strong> ${formatDuration(call.duration)}</p>
+                    <p><strong>Category:</strong> ${call.category || 'N/A'}</p>
+                    <p><strong>Priority:</strong> ${call.priority || 'N/A'}</p>
+                    <p><strong>Status:</strong> ${call.status || 'N/A'}</p>
+                    <p><strong>User ID:</strong> ${call.user_id || 'N/A'}</p>
+                    
+                    ${call.summary ? `<h4>Summary:</h4><p>${call.summary}</p>` : ''}
+                    ${call.transcript ? `<h4>Transcript:</h4><p>${call.transcript}</p>` : ''}
+                    
+                    <h4>Raw Webhook Data:</h4>
+                    <div class="call-details">
+                        ${JSON.stringify(call.webhook_data || call, null, 2)}
+                    </div>
                 </div>
             `;
 
-            // You could show this in a modal or expand the row
-            alert('Call details:\n' + JSON.stringify(call, null, 2));
+            document.getElementById('modalContent').innerHTML = modalContent;
+            document.getElementById('callModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('callModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('callModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
         }
 
         function refreshCalls() {
@@ -483,7 +621,7 @@
         }
 
         function generateCSV(calls) {
-            const headers = ['ID', 'Timestamp', 'Duration', 'Category', 'Priority', 'Status', 'Summary'];
+            const headers = ['ID', 'Timestamp', 'Duration', 'Category', 'Priority', 'Status', 'Summary', 'User ID'];
             const csvRows = [headers.join(',')];
             
             calls.forEach(call => {
@@ -494,7 +632,8 @@
                     call.category || '',
                     call.priority || '',
                     call.status || '',
-                    (call.summary || '').replace(/"/g, '""')
+                    (call.summary || '').replace(/"/g, '""'),
+                    call.user_id || ''
                 ];
                 csvRows.push(row.join(','));
             });
