@@ -340,7 +340,16 @@
                     <button class="btn webhook" onclick="checkWebhookStatus()">🔗 Check Webhook</button>
                     <button class="btn" onclick="refreshCalls()">🔄 Refresh</button>
                     <button class="btn secondary" onclick="exportData()">📥 Export</button>
+                    <button class="btn secondary" onclick="toggleDebug()">🐛 Debug</button>
+                    <button class="btn secondary" onclick="addSampleData()">➕ Add Sample Data</button>
+                    <button class="btn secondary" onclick="clearData()">🗑️ Clear Data</button>
                 </div>
+            </div>
+
+            <!-- Debug Section -->
+            <div id="debugSection" style="display: none; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 15px; margin-bottom: 20px; font-family: monospace; font-size: 0.9rem;">
+                <h4>🐛 Debug Information</h4>
+                <div id="debugInfo">Loading debug info...</div>
             </div>
 
             <!-- Filters -->
@@ -439,23 +448,77 @@
             });
         }
 
+        function refreshCalls() {
+            loadCalls();
+        }
+
+        function toggleDebug() {
+            const debugSection = document.getElementById('debugSection');
+            const isVisible = debugSection.style.display !== 'none';
+            debugSection.style.display = isVisible ? 'none' : 'block';
+            
+            if (!isVisible) {
+                updateDebugInfo();
+            }
+        }
+
+        function updateDebugInfo() {
+            const debugInfo = document.getElementById('debugInfo');
+            const debugData = {
+                totalCalls: allCalls.length,
+                filteredCalls: filteredCalls.length,
+                currentPage: currentPage,
+                callsPerPage: callsPerPage,
+                webhookUrl: webhookUrl,
+                sampleCall: allCalls.length > 0 ? allCalls[0] : null,
+                lastCallTime: allCalls.length > 0 ? allCalls[0].timestamp : 'No calls',
+                categories: [...new Set(allCalls.map(call => call.category))],
+                priorities: [...new Set(allCalls.map(call => call.priority))],
+                statuses: [...new Set(allCalls.map(call => call.status))]
+            };
+            
+            debugInfo.innerHTML = `
+                <strong>Data Summary:</strong><br>
+                Total Calls: ${debugData.totalCalls}<br>
+                Filtered Calls: ${debugData.filteredCalls}<br>
+                Current Page: ${debugData.currentPage}<br>
+                Categories: ${debugData.categories.join(', ')}<br>
+                Priorities: ${debugData.priorities.join(', ')}<br>
+                Statuses: ${debugData.statuses.join(', ')}<br>
+                Last Call: ${debugData.lastCallTime}<br><br>
+                <strong>Sample Call Data:</strong><br>
+                <pre>${JSON.stringify(debugData.sampleCall, null, 2)}</pre>
+            `;
+        }
+
         function loadCalls() {
+            console.log('Loading calls from /api/calls...');
             fetch('/api/calls')
-                .then(response => response.json())
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('Received data:', data);
                     allCalls = data.calls || [];
+                    console.log('Processed calls:', allCalls);
                     filteredCalls = [...allCalls];
                     updateStats();
                     displayCalls();
+                    updateDebugInfo();
                 })
                 .catch(error => {
                     console.error('Error loading calls:', error);
                     document.getElementById('callsContainer').innerHTML = 
-                        '<div class="no-data">❌ Error loading call data</div>';
+                        `<div class="no-data">❌ Error loading call data: ${error.message}</div>`;
                 });
         }
 
         function updateStats() {
+            console.log('Updating stats with', allCalls.length, 'calls');
             const totalCalls = allCalls.length;
             const avgDuration = totalCalls > 0 ? 
                 Math.round(allCalls.reduce((sum, call) => sum + (call.duration || 0), 0) / totalCalls) : 0;
@@ -467,6 +530,8 @@
             document.getElementById('avgDuration').textContent = avgDuration;
             document.getElementById('successRate').textContent = successRate + '%';
             document.getElementById('urgentCalls').textContent = urgentCalls;
+            
+            console.log('Stats updated:', { totalCalls, avgDuration, successRate, urgentCalls });
         }
 
         function filterCalls() {
@@ -474,6 +539,8 @@
             const priorityFilter = document.getElementById('priorityFilter').value;
             const categoryFilter = document.getElementById('categoryFilter').value;
             const dateFilter = document.getElementById('dateFilter').value;
+
+            console.log('Filtering calls with:', { statusFilter, priorityFilter, categoryFilter, dateFilter });
 
             filteredCalls = allCalls.filter(call => {
                 const statusMatch = !statusFilter || call.status === statusFilter;
@@ -484,14 +551,18 @@
                 return statusMatch && priorityMatch && categoryMatch && dateMatch;
             });
 
+            console.log('Filtered calls:', filteredCalls.length);
             currentPage = 1;
             displayCalls();
         }
 
         function displayCalls() {
+            console.log('Displaying calls:', filteredCalls.length);
             const startIndex = (currentPage - 1) * callsPerPage;
             const endIndex = startIndex + callsPerPage;
             const pageCalls = filteredCalls.slice(startIndex, endIndex);
+
+            console.log('Page calls:', pageCalls);
 
             if (pageCalls.length === 0) {
                 document.getElementById('callsContainer').innerHTML = 
@@ -605,8 +676,52 @@
             }
         }
 
-        function refreshCalls() {
-            loadCalls();
+        function clearData() {
+            if (confirm('Are you sure you want to clear all call data?')) {
+                fetch('/api/test/clear-data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Clear data response:', data);
+                    if (data.status === 'success') {
+                        alert('Data cleared successfully!');
+                        loadCalls();
+                    } else {
+                        alert('Error clearing data: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error clearing data:', error);
+                    alert('Error clearing data: ' + error.message);
+                });
+            }
+        }
+
+        function addSampleData() {
+            fetch('/api/test/add-sample-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Add sample data response:', data);
+                if (data.status === 'success') {
+                    alert(`Added ${data.total_calls} sample calls successfully!`);
+                    loadCalls();
+                } else {
+                    alert('Error adding sample data: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error adding sample data:', error);
+                alert('Error adding sample data: ' + error.message);
+            });
         }
 
         function exportData() {
