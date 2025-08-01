@@ -6,89 +6,32 @@
     <title>Webhook Test - OmniDimension</title>
     <style>
         body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0;
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             color: white;
         }
         .container {
-            max-width: 1000px;
+            max-width: 800px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 40px 20px;
         }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .header h1 {
+        h1 { 
+            color: white; 
             font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
-        .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-        .nav-links {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-        }
-        .nav-link {
-            background: rgba(255,255,255,0.2);
-            color: white;
-            text-decoration: none;
-            padding: 12px 24px;
-            border-radius: 25px;
-            transition: all 0.3s ease;
-            font-weight: 600;
-        }
-        .nav-link:hover {
-            background: rgba(255,255,255,0.3);
-            transform: translateY(-2px);
-        }
-        .nav-link.active {
-            background: #28a745;
+            margin-bottom: 20px;
+            text-align: center;
         }
         .test-section {
             background: rgba(255,255,255,0.1);
             border-radius: 15px;
             padding: 30px;
             margin-bottom: 20px;
-            backdrop-filter: blur(10px);
         }
-        .section-header {
-            margin-bottom: 20px;
-        }
-        .section-header h2 {
+        .test-section h2 {
             color: #28a745;
-            margin-bottom: 10px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-        }
-        .form-group input, .form-group textarea, .form-group select {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            background: rgba(255,255,255,0.2);
-            color: white;
-            font-size: 1rem;
-        }
-        .form-group textarea {
-            min-height: 100px;
-            resize: vertical;
-        }
-        .form-group input::placeholder, .form-group textarea::placeholder {
-            color: rgba(255,255,255,0.7);
+            margin-bottom: 15px;
         }
         .btn {
             background: #28a745;
@@ -98,12 +41,10 @@
             border-radius: 8px;
             cursor: pointer;
             font-size: 1rem;
-            transition: all 0.3s ease;
-            margin-right: 10px;
+            margin: 10px 5px;
         }
         .btn:hover {
             background: #218838;
-            transform: translateY(-2px);
         }
         .btn.secondary {
             background: #6c757d;
@@ -111,295 +52,127 @@
         .btn.secondary:hover {
             background: #5a6268;
         }
-        .response-section {
+        .result {
             background: rgba(0,0,0,0.3);
             border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
+            padding: 15px;
+            margin-top: 15px;
             font-family: monospace;
             white-space: pre-wrap;
-            max-height: 300px;
-            overflow-y: auto;
         }
-        .status-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #28a745;
-            margin-right: 8px;
-            animation: pulse 2s infinite;
-        }
-        .status-indicator.error {
-            background: #dc3545;
-        }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-        .webhook-info {
-            background: rgba(255,255,255,0.1);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        .webhook-url {
-            background: rgba(0,0,0,0.3);
+        .status {
             padding: 10px;
             border-radius: 5px;
-            font-family: monospace;
-            word-break: break-all;
+            margin: 10px 0;
+        }
+        .status.success {
+            background: rgba(40, 167, 69, 0.3);
+            border: 1px solid #28a745;
+        }
+        .status.error {
+            background: rgba(220, 53, 69, 0.3);
+            border: 1px solid #dc3545;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🔗 Webhook Test</h1>
-            <p>Test the OmniDimension webhook integration</p>
-        </div>
-
-        <div class="nav-links">
-            <a href="/" class="nav-link">🏠 Home</a>
-            <a href="/test" class="nav-link active">🔗 Test Webhook</a>
-            <a href="/reports" class="nav-link">📊 View Reports</a>
-        </div>
-
-        <div class="webhook-info">
-            <h3>📡 Webhook Configuration</h3>
-            <p><strong>Webhook URL:</strong></p>
-            <div class="webhook-url">https://complaints-2-kappa.vercel.app/api/webhook</div>
-            <p><strong>Status:</strong> <span class="status-indicator" id="webhookStatus"></span> <span id="statusText">Checking...</span></p>
+        <h1>🔗 Webhook Test Page</h1>
+        
+        <div class="test-section">
+            <h2>📡 Webhook Status Check</h2>
+            <p>Test if your webhook endpoint is working properly.</p>
+            <button class="btn" onclick="testWebhookStatus()">Test Webhook Status</button>
+            <div id="statusResult"></div>
         </div>
 
         <div class="test-section">
-            <div class="section-header">
-                <h2>🧪 Test Webhook Data</h2>
-                <p>Send test data to simulate a call from OmniDimension</p>
-            </div>
-
-            <form id="webhookForm">
-                <div class="form-group">
-                    <label for="callId">Call ID:</label>
-                    <input type="text" id="callId" placeholder="Enter call ID or leave empty for auto-generated">
-                </div>
-
-                <div class="form-group">
-                    <label for="userId">User ID:</label>
-                    <input type="text" id="userId" placeholder="Enter user ID">
-                </div>
-
-                <div class="form-group">
-                    <label for="transcript">Transcript:</label>
-                    <textarea id="transcript" placeholder="Enter call transcript or conversation text"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="summary">Summary:</label>
-                    <textarea id="summary" placeholder="Enter call summary or analysis"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="category">Category:</label>
-                    <select id="category">
-                        <option value="">Auto-detect</option>
-                        <option value="technical">Technical</option>
-                        <option value="billing">Billing</option>
-                        <option value="service">Service</option>
-                        <option value="product">Product</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="priority">Priority:</label>
-                    <select id="priority">
-                        <option value="medium">Medium</option>
-                        <option value="low">Low</option>
-                        <option value="high">High</option>
-                        <option value="urgent">Urgent</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="duration">Duration (seconds):</label>
-                    <input type="number" id="duration" placeholder="Enter call duration in seconds">
-                </div>
-
-                <div class="form-group">
-                    <label for="status">Status:</label>
-                    <select id="status">
-                        <option value="completed">Completed</option>
-                        <option value="pending">Pending</option>
-                        <option value="failed">Failed</option>
-                    </select>
-                </div>
-
-                <button type="submit" class="btn">🚀 Send Test Webhook</button>
-                <button type="button" class="btn secondary" onclick="loadSampleData()">📝 Load Sample Data</button>
-                <button type="button" class="btn secondary" onclick="clearForm()">🗑️ Clear Form</button>
-            </form>
-
-            <div id="response" class="response-section" style="display: none;"></div>
+            <h2>📞 Test Webhook Call</h2>
+            <p>Send a test webhook payload to simulate a call completion.</p>
+            <button class="btn" onclick="testWebhookCall()">Send Test Call Data</button>
+            <div id="callResult"></div>
         </div>
 
         <div class="test-section">
-            <div class="section-header">
-                <h2>📊 Recent Test Results</h2>
-                <p>View the latest webhook test responses</p>
-            </div>
-            <div id="testResults"></div>
+            <h2>📋 Call History</h2>
+            <p>View recent call data (if any).</p>
+            <button class="btn secondary" onclick="getCallHistory()">Get Call History</button>
+            <div id="historyResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔗 Webhook URL for OmniDimension</h2>
+            <p>Use this URL in your OmniDimension Post-Call settings:</p>
+            <div class="result" id="webhookUrl">https://complaints-2-kappa.vercel.app/api/webhook</div>
+            <button class="btn secondary" onclick="copyWebhookUrl()">Copy URL</button>
         </div>
     </div>
 
     <script>
-        const webhookUrl = 'https://complaints-2-kappa.vercel.app/api/webhook';
-        let testResults = [];
-
-        // Check webhook status on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            checkWebhookStatus();
-            loadTestResults();
-        });
-
-        function checkWebhookStatus() {
-            fetch(webhookUrl, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+        function testWebhookStatus() {
+            fetch('/api/webhook', {
+                method: 'GET'
             })
             .then(response => response.json())
             .then(data => {
-                const indicator = document.getElementById('webhookStatus');
-                const statusText = document.getElementById('statusText');
-                
-                if (data.status === 'healthy') {
-                    indicator.classList.remove('error');
-                    statusText.textContent = 'Active and ready to receive calls';
-                } else {
-                    indicator.classList.add('error');
-                    statusText.textContent = 'Inactive or error';
-                }
+                document.getElementById('statusResult').innerHTML = 
+                    `<div class="status success">✅ Webhook is active: ${JSON.stringify(data, null, 2)}</div>`;
             })
             .catch(error => {
-                console.error('Error checking webhook status:', error);
-                const indicator = document.getElementById('webhookStatus');
-                const statusText = document.getElementById('statusText');
-                indicator.classList.add('error');
-                statusText.textContent = 'Error connecting to webhook';
+                document.getElementById('statusResult').innerHTML = 
+                    `<div class="status error">❌ Error: ${error.message}</div>`;
             });
         }
 
-        document.getElementById('webhookForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            sendTestWebhook();
-        });
-
-        function sendTestWebhook() {
-            const formData = {
-                call_id: document.getElementById('callId').value || `test_${Date.now()}`,
-                user_id: document.getElementById('userId').value || 'test_user',
-                transcript: document.getElementById('transcript').value || 'This is a test call transcript.',
-                summary: document.getElementById('summary').value || 'Test call summary.',
-                category: document.getElementById('category').value || '',
-                priority: document.getElementById('priority').value,
-                duration: parseInt(document.getElementById('duration').value) || 120,
-                status: document.getElementById('status').value,
-                sentiment: 'neutral',
-                language: 'en',
-                call_type: 'voice',
-                agent_id: 'test_agent',
-                queue_time: 5,
-                resolution_time: 300
+        function testWebhookCall() {
+            const testData = {
+                call_id: 'test_call_' + Date.now(),
+                transcript: 'This is a test call transcript from the user.',
+                summary: 'User reported a technical issue with the system.',
+                category: 'technical',
+                priority: 'medium',
+                user_id: 'test_user_123',
+                duration: 120,
+                status: 'completed',
+                timestamp: new Date().toISOString()
             };
 
-            fetch(webhookUrl, {
+            fetch('/api/webhook', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(testData)
             })
             .then(response => response.json())
             .then(data => {
-                const responseDiv = document.getElementById('response');
-                responseDiv.style.display = 'block';
-                responseDiv.textContent = JSON.stringify(data, null, 2);
-                
-                // Add to test results
-                testResults.unshift({
-                    timestamp: new Date().toISOString(),
-                    success: data.status === 'success',
-                    call_id: data.call_id,
-                    response: data
-                });
-                
-                saveTestResults();
-                loadTestResults();
+                document.getElementById('callResult').innerHTML = 
+                    `<div class="status success">✅ Test call processed: ${JSON.stringify(data, null, 2)}</div>`;
             })
             .catch(error => {
-                const responseDiv = document.getElementById('response');
-                responseDiv.style.display = 'block';
-                responseDiv.textContent = `Error: ${error.message}`;
+                document.getElementById('callResult').innerHTML = 
+                    `<div class="status error">❌ Error: ${error.message}</div>`;
             });
         }
 
-        function loadSampleData() {
-            const sampleData = {
-                callId: `sample_${Date.now()}`,
-                userId: 'john_doe',
-                transcript: 'Customer called about a technical issue with their account. They mentioned that the login system is not working properly and they are getting error messages. The customer is frustrated and needs immediate assistance.',
-                summary: 'Customer experiencing login issues with their account. Technical problem with authentication system. Urgent resolution needed.',
-                category: 'technical',
-                priority: 'high',
-                duration: 180,
-                status: 'completed'
-            };
-
-            document.getElementById('callId').value = sampleData.callId;
-            document.getElementById('userId').value = sampleData.userId;
-            document.getElementById('transcript').value = sampleData.transcript;
-            document.getElementById('summary').value = sampleData.summary;
-            document.getElementById('category').value = sampleData.category;
-            document.getElementById('priority').value = sampleData.priority;
-            document.getElementById('duration').value = sampleData.duration;
-            document.getElementById('status').value = sampleData.status;
+        function getCallHistory() {
+            fetch('/api/calls')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('historyResult').innerHTML = 
+                    `<div class="result">${JSON.stringify(data, null, 2)}</div>`;
+            })
+            .catch(error => {
+                document.getElementById('historyResult').innerHTML = 
+                    `<div class="status error">❌ Error: ${error.message}</div>`;
+            });
         }
 
-        function clearForm() {
-            document.getElementById('webhookForm').reset();
-            document.getElementById('response').style.display = 'none';
-        }
-
-        function saveTestResults() {
-            localStorage.setItem('webhookTestResults', JSON.stringify(testResults.slice(0, 10)));
-        }
-
-        function loadTestResults() {
-            const saved = localStorage.getItem('webhookTestResults');
-            if (saved) {
-                testResults = JSON.parse(saved);
-            }
-            
-            const resultsDiv = document.getElementById('testResults');
-            if (testResults.length === 0) {
-                resultsDiv.innerHTML = '<p>No test results yet. Send a test webhook to see results here.</p>';
-                return;
-            }
-
-            const resultsHTML = testResults.map(result => `
-                <div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 15px; margin-bottom: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <span style="font-weight: 600;">${result.call_id}</span>
-                        <span style="color: ${result.success ? '#28a745' : '#dc3545'};">${result.success ? '✅ Success' : '❌ Failed'}</span>
-                    </div>
-                    <div style="font-size: 0.9rem; opacity: 0.8;">${new Date(result.timestamp).toLocaleString()}</div>
-                </div>
-            `).join('');
-
-            resultsDiv.innerHTML = resultsHTML;
+        function copyWebhookUrl() {
+            const url = document.getElementById('webhookUrl').textContent;
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Webhook URL copied to clipboard!');
+            });
         }
     </script>
 </body>
