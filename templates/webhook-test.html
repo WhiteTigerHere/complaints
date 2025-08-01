@@ -3,31 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Webhook Test - OmniDimension</title>
+    <title>Webhook Test & Monitoring - OmniDimension</title>
     <style>
         body { 
-            font-family: Arial, sans-serif; 
-            margin: 20px; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             color: white;
         }
         .container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 20px;
         }
-        h1 { 
-            color: white; 
-            font-size: 2.5rem;
-            margin-bottom: 20px;
+        .header {
             text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
         }
         .test-section {
             background: rgba(255,255,255,0.1);
             border-radius: 15px;
             padding: 30px;
             margin-bottom: 20px;
+            backdrop-filter: blur(10px);
         }
         .test-section h2 {
             color: #28a745;
@@ -42,9 +45,11 @@
             cursor: pointer;
             font-size: 1rem;
             margin: 10px 5px;
+            transition: all 0.3s ease;
         }
         .btn:hover {
             background: #218838;
+            transform: translateY(-2px);
         }
         .btn.secondary {
             background: #6c757d;
@@ -52,13 +57,21 @@
         .btn.secondary:hover {
             background: #5a6268;
         }
+        .btn.danger {
+            background: #dc3545;
+        }
+        .btn.danger:hover {
+            background: #c82333;
+        }
         .result {
             background: rgba(0,0,0,0.3);
             border-radius: 8px;
             padding: 15px;
             margin-top: 15px;
-            font-family: monospace;
+            font-family: 'Courier New', monospace;
             white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
         }
         .status {
             padding: 10px;
@@ -73,107 +86,366 @@
             background: rgba(220, 53, 69, 0.3);
             border: 1px solid #dc3545;
         }
+        .status.info {
+            background: rgba(23, 162, 184, 0.3);
+            border: 1px solid #17a2b8;
+        }
+        .json-example {
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .monitoring-panel {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 10px 0;
+        }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+        }
+        .metric-value {
+            font-weight: bold;
+            color: #28a745;
+        }
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔗 Webhook Test Page</h1>
-        
-        <div class="test-section">
-            <h2>📡 Webhook Status Check</h2>
-            <p>Test if your webhook endpoint is working properly.</p>
-            <button class="btn" onclick="testWebhookStatus()">Test Webhook Status</button>
-            <div id="statusResult"></div>
+        <div class="header">
+            <h1>🔗 Webhook Test & Monitoring</h1>
+            <p>Test your webhook endpoint and monitor data reception</p>
+        </div>
+
+        <div class="grid">
+            <div>
+                <div class="test-section">
+                    <h2>📡 Webhook Status Check</h2>
+                    <p>Test if your webhook endpoint is working properly.</p>
+                    <button class="btn" onclick="testWebhookStatus()">Test Webhook Status</button>
+                    <div id="statusResult"></div>
+                </div>
+
+                <div class="test-section">
+                    <h2>📞 Test Webhook Call</h2>
+                    <p>Send a test webhook payload to simulate a call completion.</p>
+                    <button class="btn" onclick="testWebhookCall()">Send Test Call Data</button>
+                    <button class="btn secondary" onclick="testComplexWebhook()">Send Complex Test Data</button>
+                    <div id="callResult"></div>
+                </div>
+
+                <div class="test-section">
+                    <h2>📋 Call History</h2>
+                    <p>View recent call data and webhook activity.</p>
+                    <button class="btn secondary" onclick="getCallHistory()">Get Call History</button>
+                    <button class="btn secondary" onclick="getWebhookLogs()">Get Webhook Logs</button>
+                    <div id="historyResult"></div>
+                </div>
+            </div>
+
+            <div>
+                <div class="test-section">
+                    <h2>📋 Expected JSON Format</h2>
+                    <p>OmniDimension sends data in this format:</p>
+                    <div class="json-example">
+{
+  "call_id": "call_123456789",
+  "transcript": "Hello, I need help with my order",
+  "summary": "Customer requested assistance with order status",
+  "category": "order_inquiry",
+  "priority": "medium",
+  "user_id": "user_123",
+  "duration": 120,
+  "status": "completed",
+  "sentiment": "neutral",
+  "intent": "order_status",
+  "confidence": 0.85,
+  "language": "en",
+  "channel": "web",
+  "entities": {
+    "order_number": "ORD-12345"
+  }
+}
+                    </div>
+                </div>
+
+                <div class="test-section">
+                    <h2>📊 Real-time Monitoring</h2>
+                    <div class="monitoring-panel">
+                        <div class="metric">
+                            <span>Total Calls Received:</span>
+                            <span class="metric-value" id="totalCalls">-</span>
+                        </div>
+                        <div class="metric">
+                            <span>Last Call Time:</span>
+                            <span class="metric-value" id="lastCallTime">-</span>
+                        </div>
+                        <div class="metric">
+                            <span>Webhook Status:</span>
+                            <span class="metric-value" id="webhookStatus">-</span>
+                        </div>
+                    </div>
+                    <button class="btn" onclick="startMonitoring()">Start Monitoring</button>
+                    <button class="btn secondary" onclick="stopMonitoring()">Stop Monitoring</button>
+                </div>
+            </div>
         </div>
 
         <div class="test-section">
-            <h2>📞 Test Webhook Call</h2>
-            <p>Send a test webhook payload to simulate a call completion.</p>
-            <button class="btn" onclick="testWebhookCall()">Send Test Call Data</button>
-            <div id="callResult"></div>
-        </div>
-
-        <div class="test-section">
-            <h2>📋 Call History</h2>
-            <p>View recent call data (if any).</p>
-            <button class="btn secondary" onclick="getCallHistory()">Get Call History</button>
-            <div id="historyResult"></div>
-        </div>
-
-        <div class="test-section">
-            <h2>🔗 Webhook URL for OmniDimension</h2>
-            <p>Use this URL in your OmniDimension Post-Call settings:</p>
-            <div class="result" id="webhookUrl">https://complaints-2-kappa.vercel.app/api/webhook</div>
-            <button class="btn secondary" onclick="copyWebhookUrl()">Copy URL</button>
+            <h2>🔧 Troubleshooting</h2>
+            <p>Common issues and solutions:</p>
+            <ul>
+                <li><strong>No data received:</strong> Check if your webhook URL is correctly configured in OmniDimension</li>
+                <li><strong>400 Bad Request:</strong> Ensure the JSON format matches the expected structure</li>
+                <li><strong>500 Server Error:</strong> Check server logs for detailed error information</li>
+                <li><strong>Data not showing in reports:</strong> Verify the webhook is being called and data is being stored</li>
+            </ul>
         </div>
     </div>
 
     <script>
-        function testWebhookStatus() {
-            fetch('/api/webhook', {
-                method: 'GET'
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('statusResult').innerHTML = 
-                    `<div class="status success">✅ Webhook is active: ${JSON.stringify(data, null, 2)}</div>`;
-            })
-            .catch(error => {
-                document.getElementById('statusResult').innerHTML = 
-                    `<div class="status error">❌ Error: ${error.message}</div>`;
-            });
+        let monitoringInterval;
+
+        async function testWebhookStatus() {
+            try {
+                const response = await fetch('/api/webhook');
+                const data = await response.json();
+                
+                const resultDiv = document.getElementById('statusResult');
+                resultDiv.innerHTML = `
+                    <div class="status success">
+                        ✅ Webhook is active and healthy
+                    </div>
+                    <div class="result">${JSON.stringify(data, null, 2)}</div>
+                `;
+            } catch (error) {
+                const resultDiv = document.getElementById('statusResult');
+                resultDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ Error testing webhook status: ${error.message}
+                    </div>
+                `;
+            }
         }
 
-        function testWebhookCall() {
+        async function testWebhookCall() {
             const testData = {
-                call_id: 'test_call_' + Date.now(),
-                transcript: 'This is a test call transcript from the user.',
-                summary: 'User reported a technical issue with the system.',
-                category: 'technical',
-                priority: 'medium',
-                user_id: 'test_user_123',
+                call_id: `test_call_${Date.now()}`,
+                transcript: "Hello, I need help with my order",
+                summary: "Customer requested assistance with order status",
+                category: "order_inquiry",
+                priority: "medium",
+                user_id: "test_user_123",
                 duration: 120,
-                status: 'completed',
-                timestamp: new Date().toISOString()
+                status: "completed",
+                sentiment: "neutral",
+                intent: "order_status",
+                confidence: 0.85,
+                language: "en",
+                channel: "web"
             };
 
-            fetch('/api/webhook', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
+            try {
+                const response = await fetch('/api/webhook', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                const data = await response.json();
+                const resultDiv = document.getElementById('callResult');
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ Test webhook call successful
+                        </div>
+                        <div class="result">Response: ${JSON.stringify(data, null, 2)}</div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="status error">
+                            ❌ Test webhook call failed: ${data.message}
+                        </div>
+                        <div class="result">Response: ${JSON.stringify(data, null, 2)}</div>
+                    `;
+                }
+            } catch (error) {
+                const resultDiv = document.getElementById('callResult');
+                resultDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ Error sending test webhook: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function testComplexWebhook() {
+            const complexData = {
+                call_id: `complex_call_${Date.now()}`,
+                transcript: "I'm having issues with my subscription. The payment failed and I can't access my account. This is very frustrating.",
+                summary: "Customer experiencing payment issues with subscription and account access problems",
+                category: "billing_issue",
+                priority: "high",
+                user_id: "user_456",
+                duration: 180,
+                status: "completed",
+                sentiment: "negative",
+                intent: "billing_support",
+                confidence: 0.92,
+                language: "en",
+                channel: "voice",
+                entities: {
+                    "subscription_type": "premium",
+                    "payment_method": "credit_card",
+                    "issue_type": "payment_failure"
                 },
-                body: JSON.stringify(testData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('callResult').innerHTML = 
-                    `<div class="status success">✅ Test call processed: ${JSON.stringify(data, null, 2)}</div>`;
-            })
-            .catch(error => {
-                document.getElementById('callResult').innerHTML = 
-                    `<div class="status error">❌ Error: ${error.message}</div>`;
-            });
+                metadata: {
+                    "agent_id": "agent_789",
+                    "queue_time": 15,
+                    "resolution_time": 300
+                }
+            };
+
+            try {
+                const response = await fetch('/api/webhook', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(complexData)
+                });
+                
+                const data = await response.json();
+                const resultDiv = document.getElementById('callResult');
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ Complex test webhook call successful
+                        </div>
+                        <div class="result">Response: ${JSON.stringify(data, null, 2)}</div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="status error">
+                            ❌ Complex test webhook call failed: ${data.message}
+                        </div>
+                        <div class="result">Response: ${JSON.stringify(data, null, 2)}</div>
+                    `;
+                }
+            } catch (error) {
+                const resultDiv = document.getElementById('callResult');
+                resultDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ Error sending complex test webhook: ${error.message}
+                    </div>
+                `;
+            }
         }
 
-        function getCallHistory() {
-            fetch('/api/calls')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('historyResult').innerHTML = 
-                    `<div class="result">${JSON.stringify(data, null, 2)}</div>`;
-            })
-            .catch(error => {
-                document.getElementById('historyResult').innerHTML = 
-                    `<div class="status error">❌ Error: ${error.message}</div>`;
-            });
+        async function getCallHistory() {
+            try {
+                const response = await fetch('/api/calls');
+                const data = await response.json();
+                
+                const resultDiv = document.getElementById('historyResult');
+                resultDiv.innerHTML = `
+                    <div class="status info">
+                        📋 Call History Retrieved
+                    </div>
+                    <div class="result">${JSON.stringify(data, null, 2)}</div>
+                `;
+            } catch (error) {
+                const resultDiv = document.getElementById('historyResult');
+                resultDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ Error getting call history: ${error.message}
+                    </div>
+                `;
+            }
         }
 
-        function copyWebhookUrl() {
-            const url = document.getElementById('webhookUrl').textContent;
-            navigator.clipboard.writeText(url).then(() => {
-                alert('Webhook URL copied to clipboard!');
-            });
+        async function getWebhookLogs() {
+            try {
+                const response = await fetch('/api/webhook/logs');
+                const data = await response.json();
+                
+                const resultDiv = document.getElementById('historyResult');
+                resultDiv.innerHTML = `
+                    <div class="status info">
+                        📋 Webhook Logs Retrieved
+                    </div>
+                    <div class="result">${JSON.stringify(data, null, 2)}</div>
+                `;
+            } catch (error) {
+                const resultDiv = document.getElementById('historyResult');
+                resultDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ Error getting webhook logs: ${error.message}
+                    </div>
+                `;
+            }
         }
+
+        async function updateMonitoring() {
+            try {
+                const response = await fetch('/api/webhook');
+                const data = await response.json();
+                
+                document.getElementById('totalCalls').textContent = data.total_calls_received || 0;
+                document.getElementById('webhookStatus').textContent = 'Active';
+                
+                // Get last call time
+                const callsResponse = await fetch('/api/calls');
+                const callsData = await callsResponse.json();
+                
+                if (callsData.calls && callsData.calls.length > 0) {
+                    const lastCall = callsData.calls[callsData.calls.length - 1];
+                    document.getElementById('lastCallTime').textContent = new Date(lastCall.timestamp).toLocaleString();
+                } else {
+                    document.getElementById('lastCallTime').textContent = 'No calls yet';
+                }
+            } catch (error) {
+                document.getElementById('webhookStatus').textContent = 'Error';
+                console.error('Monitoring error:', error);
+            }
+        }
+
+        function startMonitoring() {
+            updateMonitoring();
+            monitoringInterval = setInterval(updateMonitoring, 5000); // Update every 5 seconds
+        }
+
+        function stopMonitoring() {
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+            }
+        }
+
+        // Initialize monitoring on page load
+        updateMonitoring();
     </script>
 </body>
 </html> 
