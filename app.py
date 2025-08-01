@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify
 import os
 import json
 from datetime import datetime
+import uuid
 
 app = Flask(__name__)
 
@@ -36,17 +37,65 @@ def webhook():
         print(f"Data: {json.dumps(data, indent=2)}")
         
         # Extract relevant information from the webhook
+        # Handle different possible data structures from OmniDimension
+        call_id = data.get('call_id') or data.get('id') or f'call_{uuid.uuid4().hex[:8]}'
+        user_id = data.get('user_id') or data.get('user') or data.get('customer_id', '')
+        transcript = data.get('transcript') or data.get('conversation', '') or data.get('audio_text', '')
+        summary = data.get('summary') or data.get('call_summary', '') or data.get('analysis', '')
+        
+        # Determine category based on content or provided category
+        category = data.get('category', '')
+        if not category and transcript:
+            # Simple category detection based on keywords
+            transcript_lower = transcript.lower()
+            if any(word in transcript_lower for word in ['technical', 'error', 'bug', 'issue']):
+                category = 'technical'
+            elif any(word in transcript_lower for word in ['billing', 'payment', 'charge', 'invoice']):
+                category = 'billing'
+            elif any(word in transcript_lower for word in ['service', 'support', 'help']):
+                category = 'service'
+            elif any(word in transcript_lower for word in ['product', 'feature', 'upgrade']):
+                category = 'product'
+            else:
+                category = 'other'
+        
+        # Determine priority based on content or provided priority
+        priority = data.get('priority', 'medium')
+        if priority == 'medium' and transcript:
+            transcript_lower = transcript.lower()
+            urgent_words = ['urgent', 'emergency', 'critical', 'immediate', 'asap']
+            high_words = ['important', 'serious', 'problem', 'issue', 'broken']
+            
+            if any(word in transcript_lower for word in urgent_words):
+                priority = 'urgent'
+            elif any(word in transcript_lower for word in high_words):
+                priority = 'high'
+        
+        # Calculate duration if provided
+        duration = data.get('duration', 0)
+        if isinstance(duration, str):
+            try:
+                duration = int(duration)
+            except:
+                duration = 0
+        
         call_data = {
-            'id': data.get('call_id', f'call_{datetime.now().timestamp()}'),
+            'id': call_id,
             'timestamp': datetime.now().isoformat(),
             'webhook_data': data,
-            'transcript': data.get('transcript', ''),
-            'summary': data.get('summary', ''),
-            'category': data.get('category', ''),
-            'priority': data.get('priority', ''),
-            'user_id': data.get('user_id', ''),
-            'duration': data.get('duration', 0),
-            'status': data.get('status', 'completed')
+            'transcript': transcript,
+            'summary': summary,
+            'category': category,
+            'priority': priority,
+            'user_id': user_id,
+            'duration': duration,
+            'status': data.get('status', 'completed'),
+            'sentiment': data.get('sentiment', 'neutral'),
+            'language': data.get('language', 'en'),
+            'call_type': data.get('call_type', 'voice'),
+            'agent_id': data.get('agent_id', ''),
+            'queue_time': data.get('queue_time', 0),
+            'resolution_time': data.get('resolution_time', 0)
         }
         
         # Store the call data for viewing in reports
@@ -63,7 +112,8 @@ def webhook():
         return jsonify({
             'status': 'success',
             'message': 'Webhook received successfully',
-            'call_id': call_data['id']
+            'call_id': call_data['id'],
+            'processed_at': datetime.now().isoformat()
         }), 200
         
     except Exception as e:
@@ -79,15 +129,69 @@ def webhook_status():
     return jsonify({
         'status': 'healthy',
         'message': 'Webhook endpoint is active',
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now().isoformat(),
+        'total_calls_received': len(call_data_storage),
+        'last_call_time': call_data_storage[-1]['timestamp'] if call_data_storage else None
     }), 200
 
 @app.route('/api/calls', methods=['GET'])
 def get_calls():
     """Endpoint to retrieve call history for reports"""
+    # Sort calls by timestamp (newest first)
+    sorted_calls = sorted(call_data_storage, key=lambda x: x['timestamp'], reverse=True)
+    
     return jsonify({
         'status': 'success',
-        'calls': call_data_storage
+        'calls': sorted_calls,
+        'total_calls': len(sorted_calls),
+        'last_updated': datetime.now().isoformat()
+    }), 200
+
+@app.route('/api/calls/stats', methods=['GET'])
+def get_call_stats():
+    """Endpoint to get call statistics"""
+    if not call_data_storage:
+        return jsonify({
+            'status': 'success',
+            'stats': {
+                'total_calls': 0,
+                'avg_duration': 0,
+                'success_rate': 0,
+                'urgent_calls': 0,
+                'categories': {},
+                'priorities': {}
+            }
+        }), 200
+    
+    total_calls = len(call_data_storage)
+    completed_calls = len([call for call in call_data_storage if call['status'] == 'completed'])
+    success_rate = (completed_calls / total_calls) * 100 if total_calls > 0 else 0
+    
+    avg_duration = sum(call['duration'] for call in call_data_storage) / total_calls if total_calls > 0 else 0
+    urgent_calls = len([call for call in call_data_storage if call['priority'] == 'urgent'])
+    
+    # Category distribution
+    categories = {}
+    for call in call_data_storage:
+        category = call['category']
+        categories[category] = categories.get(category, 0) + 1
+    
+    # Priority distribution
+    priorities = {}
+    for call in call_data_storage:
+        priority = call['priority']
+        priorities[priority] = priorities.get(priority, 0) + 1
+    
+    return jsonify({
+        'status': 'success',
+        'stats': {
+            'total_calls': total_calls,
+            'avg_duration': round(avg_duration, 2),
+            'success_rate': round(success_rate, 2),
+            'urgent_calls': urgent_calls,
+            'categories': categories,
+            'priorities': priorities
+        }
     }), 200
 
 if __name__ == '__main__':
