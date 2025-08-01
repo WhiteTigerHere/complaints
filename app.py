@@ -5,6 +5,9 @@ from datetime import datetime
 
 app = Flask(__name__)
 
+# In-memory storage for call data (in production, use a database)
+call_data_storage = []
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -12,6 +15,10 @@ def index():
 @app.route('/test')
 def test():
     return render_template('webhook-test.html')
+
+@app.route('/reports')
+def reports():
+    return render_template('reports.html')
 
 @app.route('/health')
 def health():
@@ -30,9 +37,9 @@ def webhook():
         
         # Extract relevant information from the webhook
         call_data = {
+            'id': data.get('call_id', f'call_{datetime.now().timestamp()}'),
             'timestamp': datetime.now().isoformat(),
             'webhook_data': data,
-            'call_id': data.get('call_id', 'unknown'),
             'transcript': data.get('transcript', ''),
             'summary': data.get('summary', ''),
             'category': data.get('category', ''),
@@ -42,20 +49,21 @@ def webhook():
             'status': data.get('status', 'completed')
         }
         
-        # Here you can process the call data
-        # For example, save to database, send notifications, etc.
+        # Store the call data for viewing in reports
+        call_data_storage.append(call_data)
+        
+        # Keep only the last 100 calls to prevent memory issues
+        if len(call_data_storage) > 100:
+            call_data_storage.pop(0)
         
         # Log the processed data
         print(f"Processed call data: {json.dumps(call_data, indent=2)}")
-        
-        # You could save this to a database or file
-        # save_call_data(call_data)
         
         # Return success response
         return jsonify({
             'status': 'success',
             'message': 'Webhook received successfully',
-            'call_id': call_data['call_id']
+            'call_id': call_data['id']
         }), 200
         
     except Exception as e:
@@ -76,19 +84,10 @@ def webhook_status():
 
 @app.route('/api/calls', methods=['GET'])
 def get_calls():
-    """Endpoint to retrieve call history (for testing)"""
-    # This would typically fetch from a database
-    # For now, return a sample response
+    """Endpoint to retrieve call history for reports"""
     return jsonify({
         'status': 'success',
-        'calls': [
-            {
-                'id': 'sample_call_1',
-                'timestamp': datetime.now().isoformat(),
-                'status': 'completed',
-                'duration': 120
-            }
-        ]
+        'calls': call_data_storage
     }), 200
 
 if __name__ == '__main__':
