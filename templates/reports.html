@@ -89,12 +89,6 @@
         .btn.secondary:hover {
             background: #5a6268;
         }
-        .btn.webhook {
-            background: #17a2b8;
-        }
-        .btn.webhook:hover {
-            background: #138496;
-        }
         .filters {
             display: flex;
             gap: 15px;
@@ -224,60 +218,6 @@
         .pagination button.active {
             background: #28a745;
         }
-        .webhook-status {
-            background: rgba(255,255,255,0.1);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .webhook-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #28a745;
-            animation: pulse 2s infinite;
-        }
-        .webhook-indicator.inactive {
-            background: #dc3545;
-        }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.8);
-        }
-        .modal-content {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            margin: 5% auto;
-            padding: 30px;
-            border-radius: 15px;
-            width: 80%;
-            max-width: 800px;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .close:hover {
-            color: white;
-        }
         @media (max-width: 768px) {
             .stats-grid {
                 grid-template-columns: 1fr;
@@ -299,17 +239,6 @@
         <div class="header">
             <h1>📊 Call Reports Dashboard</h1>
             <p>View and analyze call data from OmniDimension webhooks</p>
-        </div>
-
-        <!-- Webhook Status -->
-        <div class="webhook-status">
-            <div class="webhook-indicator" id="webhookIndicator"></div>
-            <div>
-                <strong>Webhook Status:</strong> 
-                <span id="webhookStatus">Checking...</span>
-                <br>
-                <small>URL: https://complaints-2-kappa.vercel.app/api/webhook</small>
-            </div>
         </div>
 
         <!-- Statistics Cards -->
@@ -337,21 +266,9 @@
             <div class="section-header">
                 <h2>📞 Call History</h2>
                 <div>
-                    <button class="btn webhook" onclick="checkWebhookStatus()">🔗 Check Webhook</button>
                     <button class="btn" onclick="refreshCalls()">🔄 Refresh</button>
                     <button class="btn secondary" onclick="exportData()">📥 Export</button>
-                    <button class="btn secondary" onclick="toggleDebug()">🐛 Debug</button>
-                    <button class="btn secondary" onclick="addSampleData()">➕ Add Sample Data</button>
-                    <button class="btn secondary" onclick="clearData()">🗑️ Clear Data</button>
-                    <button class="btn secondary" onclick="syncWebhookData()">🔄 Sync Webhook</button>
-                    <button class="btn secondary" onclick="simulateOmniCall()">📞 Simulate Omni Call</button>
                 </div>
-            </div>
-
-            <!-- Debug Section -->
-            <div id="debugSection" style="display: none; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 15px; margin-bottom: 20px; font-family: monospace; font-size: 0.9rem;">
-                <h4>🐛 Debug Information</h4>
-                <div id="debugInfo">Loading debug info...</div>
             </div>
 
             <!-- Filters -->
@@ -399,154 +316,34 @@
         </div>
     </div>
 
-    <!-- Modal for call details -->
-    <div id="callModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h2>📞 Call Details</h2>
-            <div id="modalContent"></div>
-        </div>
-    </div>
-
     <script>
         let allCalls = [];
         let filteredCalls = [];
         let currentPage = 1;
         const callsPerPage = 10;
-        const webhookUrl = 'https://complaints-2-kappa.vercel.app/api/webhook';
 
         // Load calls on page load
         document.addEventListener('DOMContentLoaded', function() {
-            checkWebhookStatus();
             loadCalls();
         });
 
-        function checkWebhookStatus() {
-            const indicator = document.getElementById('webhookIndicator');
-            const status = document.getElementById('webhookStatus');
-            
-            // First try to check local webhook status
-            fetch('/api/webhook', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Local webhook status:', data);
-                if (data.status === 'healthy') {
-                    indicator.classList.remove('inactive');
-                    status.textContent = `Active - ${data.total_calls_received || 0} calls received`;
-                } else {
-                    indicator.classList.add('inactive');
-                    status.textContent = 'Inactive or error';
-                }
-            })
-            .catch(error => {
-                console.error('Error checking local webhook:', error);
-                // Try external webhook as fallback
-                return fetch(webhookUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-            })
-            .then(response => {
-                if (response && response.json) {
-                    return response.json();
-                }
-                throw new Error('No response from webhook');
-            })
-            .then(data => {
-                console.log('External webhook status:', data);
-                if (data.status === 'healthy') {
-                    indicator.classList.remove('inactive');
-                    status.textContent = `Active - ${data.total_calls_received || 0} calls received`;
-                } else {
-                    indicator.classList.add('inactive');
-                    status.textContent = 'Inactive or error';
-                }
-            })
-            .catch(error => {
-                console.error('Error checking webhook status:', error);
-                indicator.classList.add('inactive');
-                status.textContent = 'Error connecting to webhook';
-            });
-        }
-
-        function refreshCalls() {
-            loadCalls();
-        }
-
-        function toggleDebug() {
-            const debugSection = document.getElementById('debugSection');
-            const isVisible = debugSection.style.display !== 'none';
-            debugSection.style.display = isVisible ? 'none' : 'block';
-            
-            if (!isVisible) {
-                updateDebugInfo();
-            }
-        }
-
-        function updateDebugInfo() {
-            const debugInfo = document.getElementById('debugInfo');
-            const debugData = {
-                totalCalls: allCalls.length,
-                filteredCalls: filteredCalls.length,
-                currentPage: currentPage,
-                callsPerPage: callsPerPage,
-                webhookUrl: webhookUrl,
-                sampleCall: allCalls.length > 0 ? allCalls[0] : null,
-                lastCallTime: allCalls.length > 0 ? allCalls[0].timestamp : 'No calls',
-                categories: [...new Set(allCalls.map(call => call.category))],
-                priorities: [...new Set(allCalls.map(call => call.priority))],
-                statuses: [...new Set(allCalls.map(call => call.status))]
-            };
-            
-            debugInfo.innerHTML = `
-                <strong>Data Summary:</strong><br>
-                Total Calls: ${debugData.totalCalls}<br>
-                Filtered Calls: ${debugData.filteredCalls}<br>
-                Current Page: ${debugData.currentPage}<br>
-                Categories: ${debugData.categories.join(', ')}<br>
-                Priorities: ${debugData.priorities.join(', ')}<br>
-                Statuses: ${debugData.statuses.join(', ')}<br>
-                Last Call: ${debugData.lastCallTime}<br><br>
-                <strong>Sample Call Data:</strong><br>
-                <pre>${JSON.stringify(debugData.sampleCall, null, 2)}</pre>
-            `;
-        }
-
         function loadCalls() {
-            console.log('Loading calls from /api/calls...');
             fetch('/api/calls')
-                .then(response => {
-                    console.log('Response status:', response.status);
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
-                    console.log('Received data:', data);
                     allCalls = data.calls || [];
-                    console.log('Processed calls:', allCalls);
                     filteredCalls = [...allCalls];
                     updateStats();
                     displayCalls();
-                    updateDebugInfo();
                 })
                 .catch(error => {
                     console.error('Error loading calls:', error);
                     document.getElementById('callsContainer').innerHTML = 
-                        `<div class="no-data">❌ Error loading call data: ${error.message}</div>`;
+                        '<div class="no-data">❌ Error loading call data</div>';
                 });
         }
 
         function updateStats() {
-            console.log('Updating stats with', allCalls.length, 'calls');
             const totalCalls = allCalls.length;
             const avgDuration = totalCalls > 0 ? 
                 Math.round(allCalls.reduce((sum, call) => sum + (call.duration || 0), 0) / totalCalls) : 0;
@@ -558,8 +355,6 @@
             document.getElementById('avgDuration').textContent = avgDuration;
             document.getElementById('successRate').textContent = successRate + '%';
             document.getElementById('urgentCalls').textContent = urgentCalls;
-            
-            console.log('Stats updated:', { totalCalls, avgDuration, successRate, urgentCalls });
         }
 
         function filterCalls() {
@@ -567,8 +362,6 @@
             const priorityFilter = document.getElementById('priorityFilter').value;
             const categoryFilter = document.getElementById('categoryFilter').value;
             const dateFilter = document.getElementById('dateFilter').value;
-
-            console.log('Filtering calls with:', { statusFilter, priorityFilter, categoryFilter, dateFilter });
 
             filteredCalls = allCalls.filter(call => {
                 const statusMatch = !statusFilter || call.status === statusFilter;
@@ -579,18 +372,14 @@
                 return statusMatch && priorityMatch && categoryMatch && dateMatch;
             });
 
-            console.log('Filtered calls:', filteredCalls.length);
             currentPage = 1;
             displayCalls();
         }
 
         function displayCalls() {
-            console.log('Displaying calls:', filteredCalls.length);
             const startIndex = (currentPage - 1) * callsPerPage;
             const endIndex = startIndex + callsPerPage;
             const pageCalls = filteredCalls.slice(startIndex, endIndex);
-
-            console.log('Page calls:', pageCalls);
 
             if (pageCalls.length === 0) {
                 document.getElementById('callsContainer').innerHTML = 
@@ -667,149 +456,19 @@
                 return;
             }
 
-            const modalContent = `
+            const detailsHTML = `
                 <div class="call-details">
-                    <h3>Call Information</h3>
-                    <p><strong>ID:</strong> ${call.id}</p>
-                    <p><strong>Timestamp:</strong> ${formatDateTime(call.timestamp)}</p>
-                    <p><strong>Duration:</strong> ${formatDuration(call.duration)}</p>
-                    <p><strong>Category:</strong> ${call.category || 'N/A'}</p>
-                    <p><strong>Priority:</strong> ${call.priority || 'N/A'}</p>
-                    <p><strong>Status:</strong> ${call.status || 'N/A'}</p>
-                    <p><strong>User ID:</strong> ${call.user_id || 'N/A'}</p>
-                    
-                    ${call.summary ? `<h4>Summary:</h4><p>${call.summary}</p>` : ''}
-                    ${call.transcript ? `<h4>Transcript:</h4><p>${call.transcript}</p>` : ''}
-                    
-                    <h4>Raw Webhook Data:</h4>
-                    <div class="call-details">
-                        ${JSON.stringify(call.webhook_data || call, null, 2)}
-                    </div>
+                    <strong>Call Details:</strong>
+                    ${JSON.stringify(call, null, 2)}
                 </div>
             `;
 
-            document.getElementById('modalContent').innerHTML = modalContent;
-            document.getElementById('callModal').style.display = 'block';
+            // You could show this in a modal or expand the row
+            alert('Call details:\n' + JSON.stringify(call, null, 2));
         }
 
-        function closeModal() {
-            document.getElementById('callModal').style.display = 'none';
-        }
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('callModal');
-            if (event.target === modal) {
-                modal.style.display = 'none';
-            }
-        }
-
-        function clearData() {
-            if (confirm('Are you sure you want to clear all call data?')) {
-                fetch('/api/test/clear-data', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Clear data response:', data);
-                    if (data.status === 'success') {
-                        alert('Data cleared successfully!');
-                        loadCalls();
-                    } else {
-                        alert('Error clearing data: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error clearing data:', error);
-                    alert('Error clearing data: ' + error.message);
-                });
-            }
-        }
-
-        function addSampleData() {
-            fetch('/api/test/add-sample-data', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Add sample data response:', data);
-                if (data.status === 'success') {
-                    alert(`Added ${data.total_calls} sample calls successfully!`);
-                    loadCalls();
-                } else {
-                    alert('Error adding sample data: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error adding sample data:', error);
-                alert('Error adding sample data: ' + error.message);
-            });
-        }
-
-        function syncWebhookData() {
-            fetch('/api/sync-webhook-data', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Sync webhook response:', data);
-                if (data.status === 'success') {
-                    alert(`Synced webhook data successfully! Call ID: ${data.call_id}`);
-                    loadCalls();
-                } else {
-                    alert('Error syncing webhook data: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error syncing webhook data:', error);
-                alert('Error syncing webhook data: ' + error.message);
-            });
-        }
-
-        function simulateOmniCall() {
-            const callData = {
-                user_id: 'test_omni_user',
-                transcript: 'Customer called about a service issue. They mentioned that their order was delayed and they need an update on the status.',
-                summary: 'Service issue - order delay. Customer needs status update.',
-                category: 'service',
-                priority: 'medium',
-                duration: 200,
-                status: 'completed',
-                sentiment: 'neutral',
-                queue_time: 8,
-                resolution_time: 350
-            };
-
-            fetch('/api/test/simulate-omni-call', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(callData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Simulate Omni call response:', data);
-                if (data.status === 'success') {
-                    alert(`Simulated OmniDimension call added! Call ID: ${data.call_id}`);
-                    loadCalls();
-                } else {
-                    alert('Error simulating Omni call: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error simulating Omni call:', error);
-                alert('Error simulating Omni call: ' + error.message);
-            });
+        function refreshCalls() {
+            loadCalls();
         }
 
         function exportData() {
@@ -824,7 +483,7 @@
         }
 
         function generateCSV(calls) {
-            const headers = ['ID', 'Timestamp', 'Duration', 'Category', 'Priority', 'Status', 'Summary', 'User ID'];
+            const headers = ['ID', 'Timestamp', 'Duration', 'Category', 'Priority', 'Status', 'Summary'];
             const csvRows = [headers.join(',')];
             
             calls.forEach(call => {
@@ -835,8 +494,7 @@
                     call.category || '',
                     call.priority || '',
                     call.status || '',
-                    (call.summary || '').replace(/"/g, '""'),
-                    call.user_id || ''
+                    (call.summary || '').replace(/"/g, '""')
                 ];
                 csvRows.push(row.join(','));
             });
