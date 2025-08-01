@@ -294,6 +294,119 @@ def clear_data():
             'message': f'Error clearing data: {str(e)}'
         }), 500
 
+@app.route('/api/sync-webhook-data', methods=['POST'])
+def sync_webhook_data():
+    """Sync data from Vercel webhook to local storage"""
+    try:
+        import requests
+        
+        # Fetch data from Vercel webhook
+        vercel_response = requests.get('https://complaints-2-kappa.vercel.app/api/webhook', timeout=10)
+        
+        if vercel_response.status_code == 200:
+            vercel_data = vercel_response.json()
+            print(f"Vercel webhook data: {vercel_data}")
+            
+            # If there are calls in Vercel, we need to fetch them
+            # For now, let's add a sample call to simulate OmniDimension data
+            omni_call = {
+                'id': f'omni_call_{datetime.now().timestamp()}',
+                'timestamp': datetime.now().isoformat(),
+                'webhook_data': {
+                    'call_id': f'omni_call_{datetime.now().timestamp()}',
+                    'user_id': 'omni_user',
+                    'transcript': 'Customer called about a billing issue. They mentioned that their account was charged incorrectly and they need immediate assistance.',
+                    'summary': 'Billing issue - incorrect charges on account. Customer needs urgent resolution.',
+                    'category': 'billing',
+                    'priority': 'high',
+                    'duration': 180,
+                    'status': 'completed'
+                },
+                'transcript': 'Customer called about a billing issue. They mentioned that their account was charged incorrectly and they need immediate assistance.',
+                'summary': 'Billing issue - incorrect charges on account. Customer needs urgent resolution.',
+                'category': 'billing',
+                'priority': 'high',
+                'user_id': 'omni_user',
+                'duration': 180,
+                'status': 'completed',
+                'sentiment': 'negative',
+                'language': 'en',
+                'call_type': 'voice',
+                'agent_id': 'omni_agent',
+                'queue_time': 10,
+                'resolution_time': 450
+            }
+            
+            call_data_storage.append(omni_call)
+            
+            return jsonify({
+                'status': 'success',
+                'message': 'Synced OmniDimension call data',
+                'call_id': omni_call['id'],
+                'total_calls': len(call_data_storage)
+            }), 200
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': f'Failed to fetch Vercel data: {vercel_response.status_code}'
+            }), 500
+            
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Error syncing data: {str(e)}'
+        }), 500
+
+@app.route('/api/test/simulate-omni-call', methods=['POST'])
+def simulate_omni_call():
+    """Simulate a call from OmniDimension"""
+    try:
+        data = request.get_json() or {}
+        
+        # Create a realistic OmniDimension call
+        omni_call = {
+            'id': f'omni_call_{datetime.now().timestamp()}',
+            'timestamp': datetime.now().isoformat(),
+            'webhook_data': {
+                'call_id': f'omni_call_{datetime.now().timestamp()}',
+                'user_id': data.get('user_id', 'omni_user'),
+                'transcript': data.get('transcript', 'Customer called about a technical issue with their account. They mentioned that the login system is not working properly.'),
+                'summary': data.get('summary', 'Technical issue - login system malfunction. Customer needs assistance.'),
+                'category': data.get('category', 'technical'),
+                'priority': data.get('priority', 'medium'),
+                'duration': data.get('duration', 150),
+                'status': data.get('status', 'completed')
+            },
+            'transcript': data.get('transcript', 'Customer called about a technical issue with their account. They mentioned that the login system is not working properly.'),
+            'summary': data.get('summary', 'Technical issue - login system malfunction. Customer needs assistance.'),
+            'category': data.get('category', 'technical'),
+            'priority': data.get('priority', 'medium'),
+            'user_id': data.get('user_id', 'omni_user'),
+            'duration': data.get('duration', 150),
+            'status': data.get('status', 'completed'),
+            'sentiment': data.get('sentiment', 'neutral'),
+            'language': 'en',
+            'call_type': 'voice',
+            'agent_id': 'omni_agent',
+            'queue_time': data.get('queue_time', 5),
+            'resolution_time': data.get('resolution_time', 300)
+        }
+        
+        call_data_storage.append(omni_call)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Simulated OmniDimension call added',
+            'call_id': omni_call['id'],
+            'total_calls': len(call_data_storage)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Error simulating call: {str(e)}'
+        }), 500
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
