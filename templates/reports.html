@@ -343,6 +343,8 @@
                     <button class="btn secondary" onclick="toggleDebug()">🐛 Debug</button>
                     <button class="btn secondary" onclick="addSampleData()">➕ Add Sample Data</button>
                     <button class="btn secondary" onclick="clearData()">🗑️ Clear Data</button>
+                    <button class="btn secondary" onclick="syncWebhookData()">🔄 Sync Webhook</button>
+                    <button class="btn secondary" onclick="simulateOmniCall()">📞 Simulate Omni Call</button>
                 </div>
             </div>
 
@@ -420,7 +422,11 @@
         });
 
         function checkWebhookStatus() {
-            fetch(webhookUrl, {
+            const indicator = document.getElementById('webhookIndicator');
+            const status = document.getElementById('webhookStatus');
+            
+            // First try to check local webhook status
+            fetch('/api/webhook', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
@@ -428,12 +434,36 @@
             })
             .then(response => response.json())
             .then(data => {
-                const indicator = document.getElementById('webhookIndicator');
-                const status = document.getElementById('webhookStatus');
-                
+                console.log('Local webhook status:', data);
                 if (data.status === 'healthy') {
                     indicator.classList.remove('inactive');
-                    status.textContent = 'Active and ready to receive calls';
+                    status.textContent = `Active - ${data.total_calls_received || 0} calls received`;
+                } else {
+                    indicator.classList.add('inactive');
+                    status.textContent = 'Inactive or error';
+                }
+            })
+            .catch(error => {
+                console.error('Error checking local webhook:', error);
+                // Try external webhook as fallback
+                return fetch(webhookUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+            })
+            .then(response => {
+                if (response && response.json) {
+                    return response.json();
+                }
+                throw new Error('No response from webhook');
+            })
+            .then(data => {
+                console.log('External webhook status:', data);
+                if (data.status === 'healthy') {
+                    indicator.classList.remove('inactive');
+                    status.textContent = `Active - ${data.total_calls_received || 0} calls received`;
                 } else {
                     indicator.classList.add('inactive');
                     status.textContent = 'Inactive or error';
@@ -441,8 +471,6 @@
             })
             .catch(error => {
                 console.error('Error checking webhook status:', error);
-                const indicator = document.getElementById('webhookIndicator');
-                const status = document.getElementById('webhookStatus');
                 indicator.classList.add('inactive');
                 status.textContent = 'Error connecting to webhook';
             });
@@ -721,6 +749,66 @@
             .catch(error => {
                 console.error('Error adding sample data:', error);
                 alert('Error adding sample data: ' + error.message);
+            });
+        }
+
+        function syncWebhookData() {
+            fetch('/api/sync-webhook-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Sync webhook response:', data);
+                if (data.status === 'success') {
+                    alert(`Synced webhook data successfully! Call ID: ${data.call_id}`);
+                    loadCalls();
+                } else {
+                    alert('Error syncing webhook data: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error syncing webhook data:', error);
+                alert('Error syncing webhook data: ' + error.message);
+            });
+        }
+
+        function simulateOmniCall() {
+            const callData = {
+                user_id: 'test_omni_user',
+                transcript: 'Customer called about a service issue. They mentioned that their order was delayed and they need an update on the status.',
+                summary: 'Service issue - order delay. Customer needs status update.',
+                category: 'service',
+                priority: 'medium',
+                duration: 200,
+                status: 'completed',
+                sentiment: 'neutral',
+                queue_time: 8,
+                resolution_time: 350
+            };
+
+            fetch('/api/test/simulate-omni-call', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(callData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Simulate Omni call response:', data);
+                if (data.status === 'success') {
+                    alert(`Simulated OmniDimension call added! Call ID: ${data.call_id}`);
+                    loadCalls();
+                } else {
+                    alert('Error simulating Omni call: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error simulating Omni call:', error);
+                alert('Error simulating Omni call: ' + error.message);
             });
         }
 
