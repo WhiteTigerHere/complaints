@@ -1,25 +1,112 @@
 <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>OmniDimension AI Agent</title>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            h1 { color: #333; }
-        </style>
-    </head>
-    <body>
-        <h1>Welcome to Our Support Page!</h1>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniDimension AI Agent</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .nav-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .nav-link {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        .nav-link:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+        .nav-link.active {
+            background: #28a745;
+        }
+        h1 { 
+            color: white; 
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        .widget-info {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 40px;
+        }
+        .widget-info h2 {
+            color: #28a745;
+            margin-bottom: 15px;
+        }
+        .widget-info p {
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #28a745;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Welcome to Our AI Support!</h1>
         <p>Click the widget icon to chat or call our AI agent.</p>
-
-        <!-- PASTE YOUR OMNIDIMENSION EMBED SCRIPT HERE -->
-        <!-- It will look something like this (replace with your actual script): -->
-        <!-- <script src="https://www.omnidim.io/chat-widget?secret=YOUR_AGENT_SECRET_KEY"></script> -->
-
-        <script id="omnidimension-web-widget" async src="https://backend.omnidim.io/web_widget.js?secret_key=754ca53be4343b31bf58f817b5fda969" ></script>
-
         
+        <div class="nav-links">
+            <a href="/" class="nav-link active">🏠 Home</a>
+            <a href="/test" class="nav-link">🔗 Test Webhook</a>
+            <a href="/reports" class="nav-link">📊 View Reports</a>
+        </div>
+        
+        <div class="widget-info">
+            <h2>🎤 Voice & Chat Support</h2>
+            <p>
+                Our AI agent is ready to help you with any questions or issues. 
+                You can either chat via text or use voice commands for a more natural experience.
+            </p>
+            <p>
+                <span class="status-indicator"></span>
+                <strong>Webhook Status:</strong> Active and ready to receive call data
+            </p>
+        </div>
+    </div>
 
-    </body>
-    </html>
+    <!-- OmniDimension Web Widget -->
+    <script id="omnidimension-web-widget" async src="https://backend.omnidim.io/web_widget.js?secret_key=754ca53be4343b31bf58f817b5fda969"></script>
+
+</body>
+</html>
