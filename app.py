@@ -194,6 +194,106 @@ def get_call_stats():
         }
     }), 200
 
+@app.route('/api/test/add-sample-data', methods=['POST'])
+def add_sample_data():
+    """Add sample call data for testing"""
+    try:
+        sample_calls = [
+            {
+                'id': f'sample_call_{i}',
+                'timestamp': datetime.now().isoformat(),
+                'webhook_data': {
+                    'call_id': f'sample_call_{i}',
+                    'user_id': f'user_{i}',
+                    'transcript': f'Sample call transcript {i} - Customer reported a technical issue.',
+                    'summary': f'Sample call summary {i} - Technical issue resolved.',
+                    'category': 'technical',
+                    'priority': 'medium',
+                    'duration': 120 + (i * 30),
+                    'status': 'completed'
+                },
+                'transcript': f'Sample call transcript {i} - Customer reported a technical issue.',
+                'summary': f'Sample call summary {i} - Technical issue resolved.',
+                'category': 'technical',
+                'priority': 'medium',
+                'user_id': f'user_{i}',
+                'duration': 120 + (i * 30),
+                'status': 'completed',
+                'sentiment': 'neutral',
+                'language': 'en',
+                'call_type': 'voice',
+                'agent_id': 'sample_agent',
+                'queue_time': 5,
+                'resolution_time': 300
+            }
+            for i in range(1, 6)
+        ]
+        
+        # Add urgent call
+        urgent_call = {
+            'id': 'urgent_call_1',
+            'timestamp': datetime.now().isoformat(),
+            'webhook_data': {
+                'call_id': 'urgent_call_1',
+                'user_id': 'urgent_user',
+                'transcript': 'URGENT: System is down and customers cannot access their accounts!',
+                'summary': 'Critical system outage affecting all users.',
+                'category': 'technical',
+                'priority': 'urgent',
+                'duration': 300,
+                'status': 'completed'
+            },
+            'transcript': 'URGENT: System is down and customers cannot access their accounts!',
+            'summary': 'Critical system outage affecting all users.',
+            'category': 'technical',
+            'priority': 'urgent',
+            'user_id': 'urgent_user',
+            'duration': 300,
+            'status': 'completed',
+            'sentiment': 'negative',
+            'language': 'en',
+            'call_type': 'voice',
+            'agent_id': 'urgent_agent',
+            'queue_time': 0,
+            'resolution_time': 600
+        }
+        
+        sample_calls.append(urgent_call)
+        
+        # Add to storage
+        call_data_storage.extend(sample_calls)
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Added {len(sample_calls)} sample calls',
+            'total_calls': len(call_data_storage)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Error adding sample data: {str(e)}'
+        }), 500
+
+@app.route('/api/test/clear-data', methods=['POST'])
+def clear_data():
+    """Clear all call data"""
+    try:
+        global call_data_storage
+        call_data_storage = []
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'All call data cleared',
+            'total_calls': 0
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Error clearing data: {str(e)}'
+        }), 500
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
