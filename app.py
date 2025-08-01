@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, jsonify
 import os
 import json
 from datetime import datetime
-import uuid
 
 app = Flask(__name__)
 
@@ -37,65 +36,17 @@ def webhook():
         print(f"Data: {json.dumps(data, indent=2)}")
         
         # Extract relevant information from the webhook
-        # Handle different possible data structures from OmniDimension
-        call_id = data.get('call_id') or data.get('id') or f'call_{uuid.uuid4().hex[:8]}'
-        user_id = data.get('user_id') or data.get('user') or data.get('customer_id', '')
-        transcript = data.get('transcript') or data.get('conversation', '') or data.get('audio_text', '')
-        summary = data.get('summary') or data.get('call_summary', '') or data.get('analysis', '')
-        
-        # Determine category based on content or provided category
-        category = data.get('category', '')
-        if not category and transcript:
-            # Simple category detection based on keywords
-            transcript_lower = transcript.lower()
-            if any(word in transcript_lower for word in ['technical', 'error', 'bug', 'issue']):
-                category = 'technical'
-            elif any(word in transcript_lower for word in ['billing', 'payment', 'charge', 'invoice']):
-                category = 'billing'
-            elif any(word in transcript_lower for word in ['service', 'support', 'help']):
-                category = 'service'
-            elif any(word in transcript_lower for word in ['product', 'feature', 'upgrade']):
-                category = 'product'
-            else:
-                category = 'other'
-        
-        # Determine priority based on content or provided priority
-        priority = data.get('priority', 'medium')
-        if priority == 'medium' and transcript:
-            transcript_lower = transcript.lower()
-            urgent_words = ['urgent', 'emergency', 'critical', 'immediate', 'asap']
-            high_words = ['important', 'serious', 'problem', 'issue', 'broken']
-            
-            if any(word in transcript_lower for word in urgent_words):
-                priority = 'urgent'
-            elif any(word in transcript_lower for word in high_words):
-                priority = 'high'
-        
-        # Calculate duration if provided
-        duration = data.get('duration', 0)
-        if isinstance(duration, str):
-            try:
-                duration = int(duration)
-            except:
-                duration = 0
-        
         call_data = {
-            'id': call_id,
+            'id': data.get('call_id', f'call_{datetime.now().timestamp()}'),
             'timestamp': datetime.now().isoformat(),
             'webhook_data': data,
-            'transcript': transcript,
-            'summary': summary,
-            'category': category,
-            'priority': priority,
-            'user_id': user_id,
-            'duration': duration,
-            'status': data.get('status', 'completed'),
-            'sentiment': data.get('sentiment', 'neutral'),
-            'language': data.get('language', 'en'),
-            'call_type': data.get('call_type', 'voice'),
-            'agent_id': data.get('agent_id', ''),
-            'queue_time': data.get('queue_time', 0),
-            'resolution_time': data.get('resolution_time', 0)
+            'transcript': data.get('transcript', ''),
+            'summary': data.get('summary', ''),
+            'category': data.get('category', ''),
+            'priority': data.get('priority', ''),
+            'user_id': data.get('user_id', ''),
+            'duration': data.get('duration', 0),
+            'status': data.get('status', 'completed')
         }
         
         # Store the call data for viewing in reports
@@ -112,8 +63,7 @@ def webhook():
         return jsonify({
             'status': 'success',
             'message': 'Webhook received successfully',
-            'call_id': call_data['id'],
-            'processed_at': datetime.now().isoformat()
+            'call_id': call_data['id']
         }), 200
         
     except Exception as e:
@@ -129,283 +79,16 @@ def webhook_status():
     return jsonify({
         'status': 'healthy',
         'message': 'Webhook endpoint is active',
-        'timestamp': datetime.now().isoformat(),
-        'total_calls_received': len(call_data_storage),
-        'last_call_time': call_data_storage[-1]['timestamp'] if call_data_storage else None
+        'timestamp': datetime.now().isoformat()
     }), 200
 
 @app.route('/api/calls', methods=['GET'])
 def get_calls():
     """Endpoint to retrieve call history for reports"""
-    # Sort calls by timestamp (newest first)
-    sorted_calls = sorted(call_data_storage, key=lambda x: x['timestamp'], reverse=True)
-    
     return jsonify({
         'status': 'success',
-        'calls': sorted_calls,
-        'total_calls': len(sorted_calls),
-        'last_updated': datetime.now().isoformat()
+        'calls': call_data_storage
     }), 200
-
-@app.route('/api/calls/stats', methods=['GET'])
-def get_call_stats():
-    """Endpoint to get call statistics"""
-    if not call_data_storage:
-        return jsonify({
-            'status': 'success',
-            'stats': {
-                'total_calls': 0,
-                'avg_duration': 0,
-                'success_rate': 0,
-                'urgent_calls': 0,
-                'categories': {},
-                'priorities': {}
-            }
-        }), 200
-    
-    total_calls = len(call_data_storage)
-    completed_calls = len([call for call in call_data_storage if call['status'] == 'completed'])
-    success_rate = (completed_calls / total_calls) * 100 if total_calls > 0 else 0
-    
-    avg_duration = sum(call['duration'] for call in call_data_storage) / total_calls if total_calls > 0 else 0
-    urgent_calls = len([call for call in call_data_storage if call['priority'] == 'urgent'])
-    
-    # Category distribution
-    categories = {}
-    for call in call_data_storage:
-        category = call['category']
-        categories[category] = categories.get(category, 0) + 1
-    
-    # Priority distribution
-    priorities = {}
-    for call in call_data_storage:
-        priority = call['priority']
-        priorities[priority] = priorities.get(priority, 0) + 1
-    
-    return jsonify({
-        'status': 'success',
-        'stats': {
-            'total_calls': total_calls,
-            'avg_duration': round(avg_duration, 2),
-            'success_rate': round(success_rate, 2),
-            'urgent_calls': urgent_calls,
-            'categories': categories,
-            'priorities': priorities
-        }
-    }), 200
-
-@app.route('/api/test/add-sample-data', methods=['POST'])
-def add_sample_data():
-    """Add sample call data for testing"""
-    try:
-        sample_calls = [
-            {
-                'id': f'sample_call_{i}',
-                'timestamp': datetime.now().isoformat(),
-                'webhook_data': {
-                    'call_id': f'sample_call_{i}',
-                    'user_id': f'user_{i}',
-                    'transcript': f'Sample call transcript {i} - Customer reported a technical issue.',
-                    'summary': f'Sample call summary {i} - Technical issue resolved.',
-                    'category': 'technical',
-                    'priority': 'medium',
-                    'duration': 120 + (i * 30),
-                    'status': 'completed'
-                },
-                'transcript': f'Sample call transcript {i} - Customer reported a technical issue.',
-                'summary': f'Sample call summary {i} - Technical issue resolved.',
-                'category': 'technical',
-                'priority': 'medium',
-                'user_id': f'user_{i}',
-                'duration': 120 + (i * 30),
-                'status': 'completed',
-                'sentiment': 'neutral',
-                'language': 'en',
-                'call_type': 'voice',
-                'agent_id': 'sample_agent',
-                'queue_time': 5,
-                'resolution_time': 300
-            }
-            for i in range(1, 6)
-        ]
-        
-        # Add urgent call
-        urgent_call = {
-            'id': 'urgent_call_1',
-            'timestamp': datetime.now().isoformat(),
-            'webhook_data': {
-                'call_id': 'urgent_call_1',
-                'user_id': 'urgent_user',
-                'transcript': 'URGENT: System is down and customers cannot access their accounts!',
-                'summary': 'Critical system outage affecting all users.',
-                'category': 'technical',
-                'priority': 'urgent',
-                'duration': 300,
-                'status': 'completed'
-            },
-            'transcript': 'URGENT: System is down and customers cannot access their accounts!',
-            'summary': 'Critical system outage affecting all users.',
-            'category': 'technical',
-            'priority': 'urgent',
-            'user_id': 'urgent_user',
-            'duration': 300,
-            'status': 'completed',
-            'sentiment': 'negative',
-            'language': 'en',
-            'call_type': 'voice',
-            'agent_id': 'urgent_agent',
-            'queue_time': 0,
-            'resolution_time': 600
-        }
-        
-        sample_calls.append(urgent_call)
-        
-        # Add to storage
-        call_data_storage.extend(sample_calls)
-        
-        return jsonify({
-            'status': 'success',
-            'message': f'Added {len(sample_calls)} sample calls',
-            'total_calls': len(call_data_storage)
-        }), 200
-        
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': f'Error adding sample data: {str(e)}'
-        }), 500
-
-@app.route('/api/test/clear-data', methods=['POST'])
-def clear_data():
-    """Clear all call data"""
-    try:
-        global call_data_storage
-        call_data_storage = []
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'All call data cleared',
-            'total_calls': 0
-        }), 200
-        
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': f'Error clearing data: {str(e)}'
-        }), 500
-
-@app.route('/api/sync-webhook-data', methods=['POST'])
-def sync_webhook_data():
-    """Sync data from Vercel webhook to local storage"""
-    try:
-        import requests
-        
-        # Fetch data from Vercel webhook
-        vercel_response = requests.get('https://complaints-2-kappa.vercel.app/api/webhook', timeout=10)
-        
-        if vercel_response.status_code == 200:
-            vercel_data = vercel_response.json()
-            print(f"Vercel webhook data: {vercel_data}")
-            
-            # If there are calls in Vercel, we need to fetch them
-            # For now, let's add a sample call to simulate OmniDimension data
-            omni_call = {
-                'id': f'omni_call_{datetime.now().timestamp()}',
-                'timestamp': datetime.now().isoformat(),
-                'webhook_data': {
-                    'call_id': f'omni_call_{datetime.now().timestamp()}',
-                    'user_id': 'omni_user',
-                    'transcript': 'Customer called about a billing issue. They mentioned that their account was charged incorrectly and they need immediate assistance.',
-                    'summary': 'Billing issue - incorrect charges on account. Customer needs urgent resolution.',
-                    'category': 'billing',
-                    'priority': 'high',
-                    'duration': 180,
-                    'status': 'completed'
-                },
-                'transcript': 'Customer called about a billing issue. They mentioned that their account was charged incorrectly and they need immediate assistance.',
-                'summary': 'Billing issue - incorrect charges on account. Customer needs urgent resolution.',
-                'category': 'billing',
-                'priority': 'high',
-                'user_id': 'omni_user',
-                'duration': 180,
-                'status': 'completed',
-                'sentiment': 'negative',
-                'language': 'en',
-                'call_type': 'voice',
-                'agent_id': 'omni_agent',
-                'queue_time': 10,
-                'resolution_time': 450
-            }
-            
-            call_data_storage.append(omni_call)
-            
-            return jsonify({
-                'status': 'success',
-                'message': 'Synced OmniDimension call data',
-                'call_id': omni_call['id'],
-                'total_calls': len(call_data_storage)
-            }), 200
-        else:
-            return jsonify({
-                'status': 'error',
-                'message': f'Failed to fetch Vercel data: {vercel_response.status_code}'
-            }), 500
-            
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': f'Error syncing data: {str(e)}'
-        }), 500
-
-@app.route('/api/test/simulate-omni-call', methods=['POST'])
-def simulate_omni_call():
-    """Simulate a call from OmniDimension"""
-    try:
-        data = request.get_json() or {}
-        
-        # Create a realistic OmniDimension call
-        omni_call = {
-            'id': f'omni_call_{datetime.now().timestamp()}',
-            'timestamp': datetime.now().isoformat(),
-            'webhook_data': {
-                'call_id': f'omni_call_{datetime.now().timestamp()}',
-                'user_id': data.get('user_id', 'omni_user'),
-                'transcript': data.get('transcript', 'Customer called about a technical issue with their account. They mentioned that the login system is not working properly.'),
-                'summary': data.get('summary', 'Technical issue - login system malfunction. Customer needs assistance.'),
-                'category': data.get('category', 'technical'),
-                'priority': data.get('priority', 'medium'),
-                'duration': data.get('duration', 150),
-                'status': data.get('status', 'completed')
-            },
-            'transcript': data.get('transcript', 'Customer called about a technical issue with their account. They mentioned that the login system is not working properly.'),
-            'summary': data.get('summary', 'Technical issue - login system malfunction. Customer needs assistance.'),
-            'category': data.get('category', 'technical'),
-            'priority': data.get('priority', 'medium'),
-            'user_id': data.get('user_id', 'omni_user'),
-            'duration': data.get('duration', 150),
-            'status': data.get('status', 'completed'),
-            'sentiment': data.get('sentiment', 'neutral'),
-            'language': 'en',
-            'call_type': 'voice',
-            'agent_id': 'omni_agent',
-            'queue_time': data.get('queue_time', 5),
-            'resolution_time': data.get('resolution_time', 300)
-        }
-        
-        call_data_storage.append(omni_call)
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Simulated OmniDimension call added',
-            'call_id': omni_call['id'],
-            'total_calls': len(call_data_storage)
-        }), 200
-        
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': f'Error simulating call: {str(e)}'
-        }), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
